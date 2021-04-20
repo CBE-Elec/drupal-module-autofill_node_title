@@ -1,0 +1,37 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for autofill_node_title module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Entity;
+use Drupal\Core\EntityInterface;
+
+/**
+ * Implements hook_help().
+ */
+function autofill_node_title_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the autofill_node_title module.
+    case 'help.page.autofill_node_title':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('!! Pour Messages du forum uniquement !! <br />Remplit le champs Titre des noeuds pour pouvoir les supprimer des affichages et formulaires.') . '</p>';
+      return $output;
+
+    default:
+
+  }
+}
+
+/**
+ * Implements hook_entity_presave().
+ */
+function autofill_node_title_entity_presave($entity) {   //Action avant de sauvegarder un noeud
+  //kint($entity->bundle());  // Nom du type de contenu
+  if ($entity->bundle() =="message_du_forum" && $entity->getTitle()==NULL) {    // pour un message du forum sans titre
+    $entity->setTitle("Message ".date("Y-m-d H:i:s"));    // on ajoute un titre unique (ou presque)
+  }
+}

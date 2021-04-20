@@ -1,0 +1,6 @@
+name: 'Autofill node Title'
+type: module
+description: Fill field &quot;Title&quot; automatically to allow disabling it in form and display
+package: 'Aquarius'
+core: 8.x
+core_version_requirement: ^8 || ^9
