@@ -1,0 +1,13 @@
+{
+    "name": "aquarius/autofill_node_title",
+    "description": "Fill field Title automatically to allow disabling it in form and display",
+    "type": "drupal-custom-module",
+    "authors": [
+        {
+            "name": "Cyril Béguet",
+            "email": "webmaster.beguet@free.fr"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
