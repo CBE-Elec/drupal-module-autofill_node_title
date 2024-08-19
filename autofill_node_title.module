@@ -38,6 +38,6 @@ function autofill_node_title_entity_presave($entity) {   //Action avant de sauve
   }
   if ($entity->bundle() =="caci" && $entity->getTitle()==NULL) {    // pour une entité CACI sans titre
     $user=\Drupal\user\Entity\User::load($entity->field_membre->target_id); //get user by ID
-    $entity->setTitle("CACI de ".$user->field_prenom->value." ".$user->field_nom->value." du ".$entity->field_date_du_certificat->value); // on ajoute un titre
+    $entity->setTitle("CACI de ".$user->field_prenom->value." ".$user->field_nom->value." du ".$entity->field_date_du_caci->value); // on ajoute un titre
   }
 }
