@@ -42,6 +42,9 @@ function autofill_node_title_entity_presave(EntityInterface $entity) {   //Actio
   if ($entity->getTitle() == NULL) {
     autofill_node_title_apply_pattern($entity);
   }
+  elseif (autofill_node_title_should_update_title($entity)) {
+    autofill_node_title_apply_pattern($entity);
+  }
 
   if ($entity->bundle() =="message_du_forum" && $entity->getTitle()==NULL) {    // pour un message du forum sans titre
     $entity->setTitle("Message ".date("Y-m-d H:i:s"));    // on ajoute un titre unique (ou presque)
@@ -84,6 +87,21 @@ function autofill_node_title_form_node_type_form_alter(array &$form, FormStateIn
     ],
   ];
 
+  $form['autofill_node_title']['update'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Mettre à jour'),
+    '#description' => t('Met à jour le titre du noeud si les champs utilisés par le motif sont modifiés.'),
+    '#default_value' => $type->getThirdPartySetting('autofill_node_title', 'update', FALSE),
+    '#states' => [
+      'enabled' => [
+        ':input[name="autofill_node_title[enabled]"]' => ['checked' => TRUE],
+      ],
+      'visible' => [
+        ':input[name="autofill_node_title[enabled]"]' => ['checked' => TRUE],
+      ],
+    ],
+  ];
+
   $form['#entity_builders'][] = 'autofill_node_title_node_type_builder';
 }
 
@@ -92,8 +110,37 @@ function autofill_node_title_form_node_type_form_alter(array &$form, FormStateIn
  */
 function autofill_node_title_node_type_builder($entity_type, NodeType $type, array &$form, FormStateInterface $form_state) {
   $settings = $form_state->getValue('autofill_node_title') ?? [];
-  $type->setThirdPartySetting('autofill_node_title', 'enabled', !empty($settings['enabled']));
+  $enabled = !empty($settings['enabled']);
+  $type->setThirdPartySetting('autofill_node_title', 'enabled', $enabled);
   $type->setThirdPartySetting('autofill_node_title', 'pattern', trim($settings['pattern'] ?? ''));
+  $type->setThirdPartySetting('autofill_node_title', 'update', $enabled && !empty($settings['update']));
+}
+
+/**
+ * Determines whether an existing node title should be refreshed.
+ */
+function autofill_node_title_should_update_title(NodeInterface $node) {
+  if ($node->isNew() || empty($node->original) || !$node->original instanceof NodeInterface) {
+    return FALSE;
+  }
+
+  $type = NodeType::load($node->bundle());
+  if (!$type || !$type->getThirdPartySetting('autofill_node_title', 'enabled', FALSE) || !$type->getThirdPartySetting('autofill_node_title', 'update', FALSE)) {
+    return FALSE;
+  }
+
+  $pattern = $type->getThirdPartySetting('autofill_node_title', 'pattern', '');
+  if ($pattern === '') {
+    return FALSE;
+  }
+
+  foreach (autofill_node_title_get_pattern_fields($pattern) as $field_name) {
+    if ($node->hasField($field_name) && $node->original->hasField($field_name) && $node->get($field_name)->getValue() !== $node->original->get($field_name)->getValue()) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 /**
@@ -118,6 +165,23 @@ function autofill_node_title_apply_pattern(NodeInterface $node) {
   if ($title !== '') {
     $node->setTitle($title);
   }
+}
+
+/**
+ * Returns the field names used in a title pattern.
+ */
+function autofill_node_title_get_pattern_fields($pattern) {
+  preg_match_all('/\[([a-zA-Z0-9_:]+)\]/', $pattern, $matches);
+
+  $fields = [];
+  foreach ($matches[1] as $token) {
+    if (strpos($token, 'node:') === 0) {
+      $token = substr($token, 5);
+    }
+    $fields[] = $token;
+  }
+
+  return array_unique($fields);
 }
 
 /**

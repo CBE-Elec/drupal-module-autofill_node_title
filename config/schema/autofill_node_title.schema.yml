@@ -8,3 +8,6 @@ node.type.*.third_party.autofill_node_title:
     pattern:
       type: string
       label: 'Motif de remplissage'
+    update:
+      type: boolean
+      label: 'Mettre à jour'
