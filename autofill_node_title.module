@@ -6,8 +6,10 @@
  */
 
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\Core\Entity;
-use Drupal\Core\EntityInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\node\Entity\NodeType;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_help().
@@ -29,10 +31,18 @@ function autofill_node_title_help($route_name, RouteMatchInterface $route_match)
 /**
  * Implements hook_entity_presave().
  */
-function autofill_node_title_entity_presave($entity) {   //Action avant de sauvegarder un noeud
+function autofill_node_title_entity_presave(EntityInterface $entity) {   //Action avant de sauvegarder un noeud
+  if (!$entity instanceof NodeInterface) {
+    return;
+  }
+
   //vardump($entity->bundle());  // Nom du type de contenu
   
   //kint($entity->bundle());  // Nom du type de contenu
+  if ($entity->getTitle() == NULL) {
+    autofill_node_title_apply_pattern($entity);
+  }
+
   if ($entity->bundle() =="message_du_forum" && $entity->getTitle()==NULL) {    // pour un message du forum sans titre
     $entity->setTitle("Message ".date("Y-m-d H:i:s"));    // on ajoute un titre unique (ou presque)
   }
@@ -40,4 +50,107 @@ function autofill_node_title_entity_presave($entity) {   //Action avant de sauve
     $user=\Drupal\user\Entity\User::load($entity->field_membre->target_id); //get user by ID
     $entity->setTitle("CACI de ".$user->field_prenom->value." ".$user->field_nom->value." du ".$entity->field_date_du_caci->value); // on ajoute un titre
   }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for node_type_form.
+ */
+function autofill_node_title_form_node_type_form_alter(array &$form, FormStateInterface $form_state) {
+  /** @var \Drupal\node\Entity\NodeType $type */
+  $type = $form_state->getFormObject()->getEntity();
+
+  $form['autofill_node_title'] = [
+    '#type' => 'details',
+    '#title' => t('Remplissage automatique du titre'),
+    '#group' => 'additional_settings',
+    '#tree' => TRUE,
+  ];
+
+  $form['autofill_node_title']['enabled'] = [
+    '#type' => 'checkbox',
+    '#title' => t('Remplissage automatique du titre'),
+    '#default_value' => $type->getThirdPartySetting('autofill_node_title', 'enabled', FALSE),
+  ];
+
+  $form['autofill_node_title']['pattern'] = [
+    '#type' => 'textfield',
+    '#title' => t('Motif de remplissage'),
+    '#default_value' => $type->getThirdPartySetting('autofill_node_title', 'pattern', ''),
+    '#description' => t('Utilisez des substitutions comme [field_nom] ou [title].'),
+    '#states' => [
+      'visible' => [
+        ':input[name="autofill_node_title[enabled]"]' => ['checked' => TRUE],
+      ],
+    ],
+  ];
+
+  $form['#entity_builders'][] = 'autofill_node_title_node_type_builder';
+}
+
+/**
+ * Entity builder for the node type form.
+ */
+function autofill_node_title_node_type_builder($entity_type, NodeType $type, array &$form, FormStateInterface $form_state) {
+  $settings = $form_state->getValue('autofill_node_title') ?? [];
+  $type->setThirdPartySetting('autofill_node_title', 'enabled', !empty($settings['enabled']));
+  $type->setThirdPartySetting('autofill_node_title', 'pattern', trim($settings['pattern'] ?? ''));
+}
+
+/**
+ * Applies the configured title pattern to a node.
+ */
+function autofill_node_title_apply_pattern(NodeInterface $node) {
+  $type = NodeType::load($node->bundle());
+  if (!$type || !$type->getThirdPartySetting('autofill_node_title', 'enabled', FALSE)) {
+    return;
+  }
+
+  $pattern = $type->getThirdPartySetting('autofill_node_title', 'pattern', '');
+  if ($pattern === '') {
+    return;
+  }
+
+  $title = preg_replace_callback('/\[([a-zA-Z0-9_:]+)\]/', function (array $matches) use ($node) {
+    return autofill_node_title_get_replacement($node, $matches[1]);
+  }, $pattern);
+
+  $title = trim(preg_replace('/\s+/', ' ', $title));
+  if ($title !== '') {
+    $node->setTitle($title);
+  }
+}
+
+/**
+ * Returns the replacement value for a pattern token.
+ */
+function autofill_node_title_get_replacement(NodeInterface $node, $token) {
+  $field_name = $token;
+  if (strpos($token, 'node:') === 0) {
+    $field_name = substr($token, 5);
+  }
+
+  if (!$node->hasField($field_name) || $node->get($field_name)->isEmpty()) {
+    return '';
+  }
+
+  $values = [];
+  foreach ($node->get($field_name) as $item) {
+    if (isset($item->entity) && $item->entity) {
+      $values[] = $item->entity->label();
+    }
+    elseif (isset($item->value) && $item->value !== '') {
+      $values[] = $item->value;
+    }
+    else {
+      $item_values = array_filter($item->toArray(), 'is_scalar');
+      $item_values = array_filter($item_values, function ($value) {
+        return $value !== '' && $value !== NULL;
+      });
+      if (!empty($item_values)) {
+        $values[] = implode(' ', $item_values);
+      }
+    }
+  }
+
+  return implode(', ', $values);
 }

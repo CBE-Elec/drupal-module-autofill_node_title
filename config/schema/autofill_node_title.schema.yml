@@ -1,0 +1,10 @@
+node.type.*.third_party.autofill_node_title:
+  type: mapping
+  label: 'Parametres Autofill node Title'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Remplissage automatique du titre'
+    pattern:
+      type: string
+      label: 'Motif de remplissage'

@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^php -l autofill_node_title\\.module$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
