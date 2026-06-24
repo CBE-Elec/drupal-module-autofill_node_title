@@ -79,11 +79,25 @@ function autofill_node_title_form_node_type_form_alter(array &$form, FormStateIn
     '#type' => 'textfield',
     '#title' => t('Motif de remplissage'),
     '#default_value' => $type->getThirdPartySetting('autofill_node_title', 'pattern', ''),
-    '#description' => t('Utilisez des substitutions comme [field_nom] ou [title].'),
+    '#description' => t('Utilisez les variables disponibles ci-dessous.'),
     '#states' => [
       'visible' => [
         ':input[name="autofill_node_title[enabled]"]' => ['checked' => TRUE],
       ],
+    ],
+  ];
+
+  $form['autofill_node_title']['available_variables'] = [
+    '#type' => 'item',
+    '#title' => t('Variables disponibles'),
+    '#states' => [
+      'visible' => [
+        ':input[name="autofill_node_title[enabled]"]' => ['checked' => TRUE],
+      ],
+    ],
+    'variables' => [
+      '#theme' => 'item_list',
+      '#items' => autofill_node_title_get_available_variables($type),
     ],
   ];
 
@@ -103,6 +117,40 @@ function autofill_node_title_form_node_type_form_alter(array &$form, FormStateIn
   ];
 
   $form['#entity_builders'][] = 'autofill_node_title_node_type_builder';
+}
+
+/**
+ * Returns the available pattern variables for a node type.
+ */
+function autofill_node_title_get_available_variables(NodeType $type) {
+  if (!$type->id()) {
+    return [t('Les variables seront disponibles après l\'enregistrement du type de contenu.')];
+  }
+
+  $field_configs = \Drupal::entityTypeManager()
+    ->getStorage('field_config')
+    ->loadByProperties([
+      'entity_type' => 'node',
+      'bundle' => $type->id(),
+    ]);
+
+  if (empty($field_configs)) {
+    return [t('Aucune variable disponible pour ce type de contenu.')];
+  }
+
+  uasort($field_configs, function ($a, $b) {
+    return strnatcasecmp($a->label(), $b->label());
+  });
+
+  $variables = [];
+  foreach ($field_configs as $field_config) {
+    $variables[] = t('@variable : @label', [
+      '@variable' => '[' . $field_config->getName() . ']',
+      '@label' => $field_config->label(),
+    ]);
+  }
+
+  return $variables;
 }
 
 /**

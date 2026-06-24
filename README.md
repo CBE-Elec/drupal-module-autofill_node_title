@@ -13,4 +13,6 @@ Trois parametres sont disponibles :
 
 Les substitutions utilisent le nom machine des champs entre crochets. Exemple : `CACI de [field_membre] du [field_date_du_caci]`.
 
+La liste des variables disponibles est affichee dans les parametres du type de contenu, sous le champ Motif de remplissage.
+
 Le fonctionnement historique pour les contenus `message_du_forum` et `caci` est conserve comme solution de repli si aucun titre n'a ete genere par motif.
