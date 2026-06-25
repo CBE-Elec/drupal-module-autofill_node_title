@@ -20,7 +20,7 @@ function autofill_node_title_help($route_name, RouteMatchInterface $route_match)
     case 'help.page.autofill_node_title':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('!! Pour Messages du forum et caci uniquement !! <br />Remplit le champs Titre des noeuds pour pouvoir les supprimer des affichages et formulaires.') . '</p>';
+      $output .= '<p>' . t('Remplit automatiquiement le champs Titre des noeuds pour pouvoir suprimer le champs Titre dans les affichages et formulaires.') . '</p>';
       return $output;
 
     default:
@@ -123,8 +123,16 @@ function autofill_node_title_form_node_type_form_alter(array &$form, FormStateIn
  * Returns the available pattern variables for a node type.
  */
 function autofill_node_title_get_available_variables(NodeType $type) {
+  $variables = [
+    t('@variable : @label', [
+      '@variable' => '[datecode]',
+      '@label' => t('Date et heure courantes'),
+    ]),
+  ];
+
   if (!$type->id()) {
-    return [t('Les variables seront disponibles après l\'enregistrement du type de contenu.')];
+    $variables[] = t('Les variables des champs seront disponibles après l\'enregistrement du type de contenu.');
+    return $variables;
   }
 
   $field_configs = \Drupal::entityTypeManager()
@@ -135,14 +143,13 @@ function autofill_node_title_get_available_variables(NodeType $type) {
     ]);
 
   if (empty($field_configs)) {
-    return [t('Aucune variable disponible pour ce type de contenu.')];
+    return $variables;
   }
 
   uasort($field_configs, function ($a, $b) {
     return strnatcasecmp($a->label(), $b->label());
   });
 
-  $variables = [];
   foreach ($field_configs as $field_config) {
     $variables[] = t('@variable : @label', [
       '@variable' => '[' . $field_config->getName() . ']',
@@ -236,6 +243,10 @@ function autofill_node_title_get_pattern_fields($pattern) {
  * Returns the replacement value for a pattern token.
  */
 function autofill_node_title_get_replacement(NodeInterface $node, $token) {
+  if ($token === 'datecode') {
+    return \Drupal::service('date.formatter')->format(\Drupal::time()->getRequestTime(), 'custom', 'YmdHis');
+  }
+
   $field_name = $token;
   if (strpos($token, 'node:') === 0) {
     $field_name = substr($token, 5);
