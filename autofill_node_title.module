@@ -36,22 +36,11 @@ function autofill_node_title_entity_presave(EntityInterface $entity) {   //Actio
     return;
   }
 
-  //vardump($entity->bundle());  // Nom du type de contenu
-  
-  //kint($entity->bundle());  // Nom du type de contenu
   if ($entity->getTitle() == NULL) {
     autofill_node_title_apply_pattern($entity);
   }
   elseif (autofill_node_title_should_update_title($entity)) {
     autofill_node_title_apply_pattern($entity);
-  }
-
-  if ($entity->bundle() =="message_du_forum" && $entity->getTitle()==NULL) {    // pour un message du forum sans titre
-    $entity->setTitle("Message ".date("Y-m-d H:i:s"));    // on ajoute un titre unique (ou presque)
-  }
-  if ($entity->bundle() =="caci" && $entity->getTitle()==NULL) {    // pour une entité CACI sans titre
-    $user=\Drupal\user\Entity\User::load($entity->field_membre->target_id); //get user by ID
-    $entity->setTitle("CACI de ".$user->field_prenom->value." ".$user->field_nom->value." du ".$entity->field_date_du_caci->value); // on ajoute un titre
   }
 }
 
